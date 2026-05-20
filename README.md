@@ -63,8 +63,8 @@ Two principles that load-bear:
 ## Installing on a new machine — for humans
 
 ```bash
-# Prereqs: Claude Code installed, git, python3 (3.10+), pyyaml.
-pip install pyyaml  # or `uv pip install pyyaml`, or whatever your toolchain prefers.
+# Prereqs: Claude Code installed, git, python3 (3.8+). No extra Python
+# packages required — the installer's YAML parser is stdlib-only.
 
 git clone https://github.com/teivng/claude-configs ~/.claude-configs
 cd ~/.claude-configs

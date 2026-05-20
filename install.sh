@@ -204,14 +204,61 @@ echo "    Profile file: $PROFILE_FILE"
 echo "    Target project (for hooks + CLAUDE.md hints): $PROJECT"
 echo
 
-# Parse profile YAML via a tiny Python helper (avoids needing a yaml gem).
+# Parse profile YAML via a stdlib-only Python helper. Avoids depending
+# on PyYAML (not in stdlib) and on bash 4+ builtins like `mapfile`.
+#
+# Format assumptions for profiles/*.yaml (kept intentionally narrow):
+#   key:
+#     - item-1
+#     - item-2
+# That's it. No nested structures, no flow style. Comments (`#`) and
+# blank lines are skipped. Multiline scalars (`key: |`) are ignored
+# (the description field uses one but we don't read it from here).
 parse() {
   python3 - "$PROFILE_FILE" "$1" <<'PY'
-import sys, yaml
+import re, sys
+key_wanted = sys.argv[2]
 with open(sys.argv[1]) as f:
-    cfg = yaml.safe_load(f)
-print("\n".join(cfg.get(sys.argv[2], []) or []))
+    lines = f.read().splitlines()
+current = None
+items = []
+for raw in lines:
+    line = raw.rstrip()
+    if not line.strip() or line.lstrip().startswith("#"):
+        continue
+    m_top = re.match(r"^([A-Za-z_][\w-]*):\s*(.*)$", line)
+    if m_top and not line.startswith((" ", "\t")):
+        if current == key_wanted:
+            break
+        current = m_top.group(1)
+        rest = m_top.group(2)
+        # `key: |` or `key: >` introduces a block scalar — skip it.
+        if rest and rest not in ("|", ">"):
+            current = None
+        continue
+    if current == key_wanted:
+        m_item = re.match(r"^\s+-\s+(.+?)\s*$", line)
+        if m_item:
+            items.append(m_item.group(1).strip().strip('"').strip("'"))
+print("\n".join(items))
 PY
+}
+
+# Collect into a portable array (no `mapfile`).
+collect() {
+  # Usage: collect VARNAME <command-that-prints-one-per-line>
+  local __var="$1"; shift
+  local __tmp=()
+  while IFS= read -r __line; do
+    [ -z "$__line" ] && continue
+    __tmp+=("$__line")
+  done < <("$@")
+  # Re-emit through eval; safe because items come from our own YAML parser.
+  eval "$__var=()"
+  local __i
+  for __i in "${__tmp[@]}"; do
+    eval "$__var+=(\"\$__i\")"
+  done
 }
 
 # Skills
@@ -224,20 +271,87 @@ done < <(parse skills)
 # Plugins (register marketplaces first, then install)
 echo
 echo "==> Plugins"
-# Register all needed marketplaces from plugins.yaml
+# Walk plugins.yaml in stdlib-only mode: collect plugin entries (id +
+# marketplace), then for each one wanted by the active profile, emit
+# its marketplace repo first, then the plugin id.
 python3 - "$REPO_DIR/plugins.yaml" "$PROFILE_FILE" <<'PY' | while IFS= read -r line; do
-import sys, yaml
+import re, sys
+
+def parse_list(text, list_key):
+    """Yield dicts under a top-level list `list_key:`."""
+    lines = text.splitlines()
+    in_list = False
+    current = None
+    block_scalar_indent = None
+    for raw in lines:
+        line = raw.rstrip()
+        stripped = line.lstrip()
+        if not stripped or stripped.startswith("#"):
+            continue
+        m_top = re.match(r"^([A-Za-z_][\w-]*):\s*(.*)$", line)
+        if m_top and not line.startswith((" ", "\t")):
+            if current is not None:
+                yield current
+                current = None
+            in_list = (m_top.group(1) == list_key)
+            block_scalar_indent = None
+            continue
+        if not in_list:
+            continue
+        # Skip block scalar continuations.
+        if block_scalar_indent is not None and (line.startswith(" " * block_scalar_indent) or not stripped):
+            continue
+        block_scalar_indent = None
+        m_item = re.match(r"^(\s+)-\s+([A-Za-z_][\w-]*):\s*(.*)$", line)
+        if m_item:
+            if current is not None:
+                yield current
+            current = {}
+            key, val = m_item.group(2), m_item.group(3).strip()
+            if val in ("|", ">"):
+                block_scalar_indent = len(m_item.group(1)) + 2
+            else:
+                current[key] = val.strip('"').strip("'")
+            continue
+        m_kv = re.match(r"^\s+([A-Za-z_][\w-]*):\s*(.*)$", line)
+        if m_kv and current is not None:
+            key, val = m_kv.group(1), m_kv.group(2).strip()
+            if val in ("|", ">"):
+                block_scalar_indent = (len(line) - len(stripped)) + 2
+            else:
+                current[key] = val.strip('"').strip("'")
+    if current is not None:
+        yield current
+
+def parse_profile_plugins(path):
+    with open(path) as f:
+        text = f.read()
+    out = []
+    in_plugins = False
+    for raw in text.splitlines():
+        line = raw.rstrip()
+        stripped = line.lstrip()
+        if not stripped or stripped.startswith("#"):
+            continue
+        m_top = re.match(r"^([A-Za-z_][\w-]*):\s*$", line)
+        if m_top and not line.startswith((" ", "\t")):
+            in_plugins = (m_top.group(1) == "plugins")
+            continue
+        if in_plugins:
+            m = re.match(r"^\s+-\s+(.+?)\s*$", line)
+            if m:
+                out.append(m.group(1).strip().strip('"').strip("'"))
+    return out
+
 with open(sys.argv[1]) as f:
-    plugs = yaml.safe_load(f)
-with open(sys.argv[2]) as f:
-    prof = yaml.safe_load(f)
-wanted = set(prof.get("plugins", []) or [])
-needed_mps = set()
-for p in plugs.get("plugins", []):
-    if p["id"] in wanted:
-        needed_mps.add(p["marketplace"])
-for mp in plugs.get("marketplaces", []):
-    if mp["name"] in needed_mps:
+    plug_text = f.read()
+wanted = set(parse_profile_plugins(sys.argv[2]))
+plugins = list(parse_list(plug_text, "plugins"))
+marketplaces = list(parse_list(plug_text, "marketplaces"))
+
+needed_mps = {p["marketplace"] for p in plugins if p.get("id") in wanted and "marketplace" in p}
+for mp in marketplaces:
+    if mp.get("name") in needed_mps and "repo" in mp:
         print(f"marketplace {mp['repo']}")
 for pid in wanted:
     print(f"plugin {pid}")
@@ -251,7 +365,7 @@ done
 # CLAUDE.md templates (hint only — manual paste)
 echo
 echo "==> CLAUDE.md templates"
-mapfile -t TEMPLATES < <(parse claude_md_templates)
+collect TEMPLATES parse claude_md_templates
 if [ "${#TEMPLATES[@]}" -gt 0 ]; then
   print_template_hint "$PROJECT" "${TEMPLATES[@]}"
 fi
@@ -259,7 +373,7 @@ fi
 # Hooks (only if any are listed in profile)
 echo
 echo "==> Hooks"
-mapfile -t HOOKS < <(parse hooks)
+collect HOOKS parse hooks
 if [ "${#HOOKS[@]}" -gt 0 ]; then
   install_hooks "$PROJECT"
 else
