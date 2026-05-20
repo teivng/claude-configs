@@ -112,9 +112,12 @@ install_hooks() {
   echo "==> Smoke-testing hooks..."
   if [ "$DRY_RUN" = "0" ]; then
     fail=0
-    if ! echo '{"tool_input":{"file_path":"'"$proj"'/scratch_x.py"}}' | "$proj/.claude/hooks/pretooluse/block-loose-files.sh" 2>/dev/null; then
-      [ "$?" = "2" ] || fail=1
-    fi
+    set +e
+    echo '{"tool_input":{"file_path":"'"$proj"'/scratch_x.py"}}' | "$proj/.claude/hooks/pretooluse/block-loose-files.sh" >/dev/null 2>&1
+    rc=$?
+    set -e
+    # Expect exit 2 (blocked). 0 (allowed) or anything else is a failure.
+    [ "$rc" = "2" ] || fail=1
     if [ "$fail" = "1" ]; then
       echo "  hook smoke test failed; please investigate before wiring." >&2
       exit 1
