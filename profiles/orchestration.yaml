@@ -1,0 +1,26 @@
+# orchestration profile
+#
+# For users who run long, multi-agent Claude Code sessions and want the
+# state-preservation + review machinery. Targets the patterns documented
+# in docs/orchestration-writeup.md.
+
+description: |
+  Multi-agent + long-session workflow. Brain dump pattern, parallel-agent
+  skills, lens-based PR review, project-agnostic hygiene hooks.
+
+skills:
+  - brain-dump
+
+plugins:
+  - pr-review-toolkit@claude-plugins-official
+  - superpowers@superpowers-dev
+
+hooks:
+  - pretooluse/block-loose-files.sh
+  - pretooluse/block-hardcoded-paths.sh
+  - stop/warn-untracked-artifacts.sh
+  - sessionstart/brain-dump-on-resume.sh
+
+claude_md_templates:
+  - do-not-block.template.md
+  - compaction-preservation.template.md

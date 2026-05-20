@@ -1,0 +1,25 @@
+{
+  "_comment": "Default hook configuration. Copy to <project-root>/.claude/hook-config.json and edit. Hook scripts in this repo read this file (or fall back to these defaults) to determine project-specific policy. Project-agnostic by design: the same hook script works for any repo; the config makes it specific.",
+
+  "block_loose_files": {
+    "_doc": "PreToolUse Write hook: block scratch/debug/adhoc files at repo root. patterns are prefix or glob fragments; allowed_dirs lists directories where the patterns are permitted.",
+    "enabled": true,
+    "patterns": ["test_", "debug_", "scratch_", "adhoc_", "tmp_", "wip_"],
+    "allowed_dirs": ["tests/", "scripts/", "src/"]
+  },
+
+  "block_hardcoded_paths": {
+    "_doc": "PreToolUse Write|Edit hook: block hardcoded absolute paths in module code. forbidden_prefixes are path prefixes that may not appear in quotes inside enforce_in files. allowlist_files are excepted (typical: a paths registry module).",
+    "enabled": true,
+    "forbidden_prefixes": ["/home/", "/Users/", "/root/"],
+    "enforce_in": ["src/**/*.py"],
+    "allowlist_files": ["src/**/paths.py", "src/**/config.py"]
+  },
+
+  "warn_untracked_artifacts": {
+    "_doc": "Stop hook: warn when artifact files are untracked in git. patterns are file extensions; excluded_dirs lists subdirs to ignore (typical: cache dirs).",
+    "enabled": true,
+    "patterns": ["npy", "pt", "h5", "h5ad", "pkl", "ckpt", "log", "tar.gz"],
+    "excluded_dirs": [".cache/", "node_modules/"]
+  }
+}

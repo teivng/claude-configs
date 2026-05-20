@@ -1,0 +1,59 @@
+# plugins.yaml
+#
+# Declarative inventory of Claude Code marketplaces + plugins to install.
+# The installer (install.sh) reads this to drive `claude plugin marketplace
+# add` and `claude plugin install` calls.
+#
+# Tags categorize plugins so profiles (profiles/*.yaml) can select subsets.
+
+marketplaces:
+  - name: claude-plugins-official
+    source: github
+    repo: anthropics/claude-plugins-official
+    notes: |
+      Anthropic's official plugin marketplace. Pre-registered on most
+      Claude Code installs but adding it is idempotent and explicit.
+
+  - name: superpowers-dev
+    source: github
+    repo: obra/superpowers
+    notes: |
+      Jesse Vincent's "superpowers" — a curated collection of TDD,
+      debugging, collaboration, and worktree-management skills. The
+      worktree skills codify the agent-isolation patterns documented in
+      docs/orchestration-writeup.md.
+
+plugins:
+  - id: pr-review-toolkit@claude-plugins-official
+    marketplace: claude-plugins-official
+    name: pr-review-toolkit
+    tags: [coding, review, orchestration]
+    rationale: |
+      Six specialized review agents. Empirically validated on PRs #9 and
+      #10 of blankbio/eval_suite — silent-failure-hunter and
+      pr-test-analyzer independently flagged the same code paths on
+      both, catching real bugs (broad warning suppression, NaN-driven
+      degenerate top-k selection) that would have been missed in casual
+      review.
+
+  - id: superpowers@superpowers-dev
+    marketplace: superpowers-dev
+    name: superpowers
+    tags: [coding, orchestration, workflows]
+    rationale: |
+      Ships skills the orchestrator-Claude actively benefits from:
+      `using-git-worktrees`, `finishing-a-development-branch`,
+      `dispatching-parallel-agents`, `verification-before-completion`,
+      `receiving-code-review`, `test-driven-development`. The worktree
+      skills in particular eliminate having to re-describe the
+      worktree-per-agent pattern in every prompt.
+
+  - id: pyright-lsp@claude-plugins-official
+    marketplace: claude-plugins-official
+    name: pyright-lsp
+    tags: [coding, python]
+    rationale: |
+      In-session Python type checking. Surfaces diagnostics live as
+      files are edited, which catches a class of bugs (typos, wrong
+      arg names, missing imports) before tests run. Strong fit for
+      Python research codebases.

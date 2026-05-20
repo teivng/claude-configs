@@ -1,0 +1,95 @@
+# Compaction strategy — three levels
+
+Context compaction is unavoidable in long Claude Code sessions. Auto-compaction at ~95% context, manual `/compact` whenever the user triggers it. What gets dropped is up to the compaction summarizer, and by default it drops "old" information — which often includes the decisions that justify the current state.
+
+Three levels of investment to fight this, in increasing effort. Most projects don't need Level 3 — Level 2 is the sweet spot.
+
+## Level 1 — Pass preservation directives at `/compact` time
+
+**Effort**: 30 seconds per compact.
+**Install**: none.
+
+When you type `/compact`, pass an argument:
+
+```
+/compact preserve current branch, modified files, key invariants, recent decisions
+```
+
+The compaction summarizer reads the argument as part of its instruction. Specific items get kept verbatim. Vague items get summarized.
+
+**When to use**: short-lived projects, occasional users, anyone who doesn't want to maintain config.
+
+**Trade-off**: relies on you remembering to pass the args every time. Easy to forget on a hectic Friday.
+
+## Level 2 — CLAUDE.md `## Compaction preservation` stanza
+
+**Effort**: 5 minutes to write, one-time.
+**Install**: paste a template into CLAUDE.md.
+
+The compaction summarizer reads CLAUDE.md before writing the summary. A stanza like:
+
+```markdown
+## Compaction preservation
+
+When compacting, always preserve:
+- The list of files modified in the current session
+- Project-specific invariants (X, Y, Z)
+- Rejected-alternative decisions documented in <decision log>
+- The git remote rule: do not push without asking
+- In-flight subprocesses
+```
+
+…gets picked up automatically. Even a bare `/compact` becomes preservation-aware.
+
+Template available at [`../claude-md-templates/compaction-preservation.template.md`](../claude-md-templates/compaction-preservation.template.md).
+
+**When to use**: any project where you expect to compact more than 2-3 times.
+
+**Trade-off**: stanza is static. If your in-flight state changes during the session (e.g. you spawn a subagent), the stanza doesn't know about it. The compaction summarizer might still drop it.
+
+## Level 3 — Brain Dump skill + SessionStart hook
+
+**Effort**: 30 minutes to install, ~30 seconds per compaction to invoke.
+**Install**: see [`../install.sh --profile orchestration`](../install.sh).
+
+Active state preservation. The user invokes a `/brain-dump` skill that writes structured session state to disk; a SessionStart hook fires after compaction and injects that state back into the new context.
+
+Components:
+
+1. **`brain-dump` skill** ([`../skills/brain-dump/SKILL.md`](../skills/brain-dump/SKILL.md)) — user invokes `/brain-dump` before `/compact`. The skill writes structured state (modified files, branch, open PRs, in-flight subprocesses, decisions made, alternatives rejected, next concrete actions, quoted invariants) to `<project-root>/.claude/brain-dumps/latest.md`.
+2. **SessionStart hook** ([`../hooks/sessionstart/brain-dump-on-resume.sh`](../hooks/sessionstart/brain-dump-on-resume.sh)) — fires on the `compact|clear` matcher. Reads `latest.md` and emits it as `additionalContext` in the SDK-standard JSON envelope. Claude Code injects this into the new context, where it appears at the top as a system-reminder-like block.
+3. **CLAUDE.md `## Compaction preservation` stanza** — same template as Level 2, but with a section explaining the brain-dump workflow.
+
+The flow:
+
+```
+[user]    → /brain-dump
+[skill]   → writes .claude/brain-dumps/latest.md with structured state
+[user]    → /compact
+[hook]    → SessionStart fires, reads latest.md, emits additionalContext
+[claude]  → new session starts with the brain dump pre-loaded
+```
+
+**Documented results in the community**: 12+ compaction cycles with full decision-history retention (sigalovskinick gist) vs. coherence loss after 2-3 cycles without the pattern.
+
+**When to use**: research codebases with multi-week timelines, projects where you spawn many subagents, anything where re-deriving state from disk every compact would lose load-bearing context (e.g. the rationale behind a non-obvious design choice).
+
+**Trade-offs**:
+
+- **No documented PreCompact hook** in current Claude Code versions. The dump step is manual (user types `/brain-dump`). The restore step is automatic. If you forget to dump, the hook still fires after `/compact` but injects whatever the previous dump said — which may be stale.
+- **`brain-dump` skill writes ~60-150 lines per invocation**. That's context the orchestrator's next turn has to read. Cost-benefit favors the dump for multi-hour sessions; not worth it for short ones.
+- **The hook's `additionalContext` mechanism is documented in Anthropic's SDK reference but the field-naming has been inconsistent across editor integrations** (`additionalContext` vs `additional_context` vs `hookSpecificOutput.additionalContext`). The bundled hook emits all three variants for compatibility.
+
+## Empirical observation from building this
+
+The first version of the brain-dump skill in this repo was tested on the actual session that built it. Result: the seeded `latest.md` is 152 lines and successfully captured (a) the two PR numbers in flight, (b) the four post-merge follow-ups identified by pr-review-toolkit's silent-failure-hunter and pr-test-analyzer, (c) the rejected design alternatives, and (d) the quoted MUST-NOT block.
+
+A fresh post-compact Claude reading that dump should be able to continue the work without re-investigating any of those facts. Which was the whole point.
+
+## What we'd recommend
+
+- **Solo projects, single-week scope**: Level 1.
+- **Team projects, multi-week scope**: Level 2.
+- **Research codebases, multi-month scope, agent orchestration**: Level 3.
+
+Don't install Level 3 if you don't need it — the dump output is real context burn, and short sessions don't benefit. But once you've felt the pain of losing a multi-hour orchestration thread to compaction, Level 3 is cheap insurance.

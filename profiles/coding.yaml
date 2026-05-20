@@ -1,0 +1,25 @@
+# coding profile
+#
+# For day-to-day Python / general engineering work. Lighter than
+# orchestration — no brain-dump infrastructure, focused on code-quality
+# review skills and the standard hygiene hooks.
+
+description: |
+  Code engineering: PR review skills, Python LSP, hygiene hooks. No
+  long-session compaction infrastructure (use the orchestration profile
+  for that).
+
+skills: []
+
+plugins:
+  - pr-review-toolkit@claude-plugins-official
+  - pyright-lsp@claude-plugins-official
+  - superpowers@superpowers-dev
+
+hooks:
+  - pretooluse/block-loose-files.sh
+  - pretooluse/block-hardcoded-paths.sh
+  - stop/warn-untracked-artifacts.sh
+
+claude_md_templates:
+  - do-not-block.template.md
