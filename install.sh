@@ -113,7 +113,14 @@ install_hooks() {
   if [ "$DRY_RUN" = "0" ]; then
     fail=0
     set +e
-    echo '{"tool_input":{"file_path":"'"$proj"'/scratch_x.py"}}' | "$proj/.claude/hooks/pretooluse/block-loose-files.sh" >/dev/null 2>&1
+    # The hook resolves the project root from CLAUDE_PROJECT_DIR (falling
+    # back to $(pwd)). We must set it to the *target* project so the
+    # fixture path lands "at repo root"; otherwise the hook compares
+    # against the installer's cwd, never matches, and returns 0 (allow)
+    # instead of the expected 2 (block) — failing the smoke test for
+    # every project except the configs repo itself.
+    echo '{"tool_input":{"file_path":"'"$proj"'/scratch_x.py"}}' \
+      | CLAUDE_PROJECT_DIR="$proj" "$proj/.claude/hooks/pretooluse/block-loose-files.sh" >/dev/null 2>&1
     rc=$?
     set -e
     # Expect exit 2 (blocked). 0 (allowed) or anything else is a failure.
@@ -258,10 +265,15 @@ collect() {
   done < <("$@")
   # Re-emit through eval; safe because items come from our own YAML parser.
   eval "$__var=()"
-  local __i
-  for __i in "${__tmp[@]}"; do
-    eval "$__var+=(\"\$__i\")"
-  done
+  # Guard the expansion: under `set -u` (bash 3.2) `"${__tmp[@]}"` on an
+  # empty array is an "unbound variable" error, which would abort the
+  # install for any profile with an empty hooks/templates list.
+  if [ "${#__tmp[@]}" -gt 0 ]; then
+    local __i
+    for __i in "${__tmp[@]}"; do
+      eval "$__var+=(\"\$__i\")"
+    done
+  fi
 }
 
 # Skills
