@@ -6,7 +6,7 @@ If you are a Claude (or any LLM-driven coding agent) reading this file to set up
 
 A personal Claude Code configuration: skills, plugins, hooks, CLAUDE.md templates, and documentation. Inventory:
 
-- **Skill**: `brain-dump` (Level 3 compaction preservation).
+- **Skills** (bundled in `skills/`, copied to `~/.claude/skills/`): `brain-dump` (Level 3 compaction preservation), `skill-creator`, the K-Dense `scientific-*` research suite (`scientific-brainstorming`, `scientific-critical-thinking`, `scientific-schematics`, `scientific-slides`, `scientific-writing`), `citation-management`, `literature-review`, `markitdown`, `scholar-evaluation`, and the `humanizer` family (`humanizer`, `humanizer_academic`, `humanizer-v2`). All MIT — see `skills/ATTRIBUTION.md`. Which subset installs depends on the profile.
 - **Plugins**: `pr-review-toolkit@claude-plugins-official`, `superpowers@superpowers-dev`, `pyright-lsp@claude-plugins-official`.
 - **Project-agnostic hooks**: `block-loose-files`, `block-hardcoded-paths`, `warn-untracked-artifacts`, `brain-dump-on-resume`.
 - **CLAUDE.md templates**: `do-not-block`, `compaction-preservation`.
@@ -16,7 +16,7 @@ A personal Claude Code configuration: skills, plugins, hooks, CLAUDE.md template
 
 Four profiles in `profiles/`:
 
-- `science` — scientific research skills (mostly references; the actual skill files ship with the user's claude.ai account, not this repo).
+- `science` — scientific research + writing skills (`scientific-*`, `citation-management`, `literature-review`, `markitdown`, `scholar-evaluation`, `humanizer` family), all bundled and installed directly.
 - `coding` — PR review + pyright + hygiene hooks; for day-to-day engineering.
 - `orchestration` — brain-dump infrastructure + worktree skills; for long multi-agent sessions.
 - `all` — union of the above.
@@ -61,7 +61,7 @@ What the installer does NOT handle automatically:
 - **Do not** modify hook scripts to skip the smoke test in `install.sh`. The smoke test is the safety check; if a hook fails it, the installer should refuse to wire it.
 - **Do not** copy hooks into `~/.claude/settings.json` (user-level). Hooks belong in project-level `.claude/settings.local.json` so they don't accidentally fire on unrelated projects.
 - **Do not** install all four profiles "just to be safe." The brain-dump skill in particular adds context overhead; only install it if the user has multi-hour sessions.
-- **Do not** redistribute the K-Dense or Anthropic scientific-* skills from `~/.claude/skills/` — they have their own license terms. The `science` profile only documents them; it doesn't copy.
+- **Preserve attribution** when touching bundled skills. They are redistributed under their MIT licenses; keep each skill's `SKILL.md` frontmatter and any `LICENSE`/`LICENSE.txt` intact, and keep `skills/ATTRIBUTION.md` accurate. Do not strip the `skill-author`/`license` fields.
 
 ## If something fails
 

@@ -9,6 +9,19 @@ description: |
 
 skills:
   - brain-dump
+  - skill-creator
+  - citation-management
+  - literature-review
+  - markitdown
+  - scholar-evaluation
+  - scientific-brainstorming
+  - scientific-critical-thinking
+  - scientific-schematics
+  - scientific-slides
+  - scientific-writing
+  - humanizer
+  - humanizer_academic
+  - humanizer-v2
 
 plugins:
   - pr-review-toolkit@claude-plugins-official

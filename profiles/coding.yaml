@@ -9,7 +9,9 @@ description: |
   long-session compaction infrastructure (use the orchestration profile
   for that).
 
-skills: []
+skills:
+  - markitdown
+  - skill-creator
 
 plugins:
   - pr-review-toolkit@claude-plugins-official

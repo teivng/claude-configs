@@ -10,6 +10,7 @@ description: |
 
 skills:
   - brain-dump
+  - skill-creator
 
 plugins:
   - pr-review-toolkit@claude-plugins-official

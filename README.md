@@ -28,7 +28,7 @@ Other profiles:
 | [`install.sh`](install.sh) | Interactive one-click installer. Reads profiles, installs skills + plugins, copies hooks, prints CLAUDE.md template hints. |
 | [`INSTRUCTIONS_FOR_AGENT.md`](INSTRUCTIONS_FOR_AGENT.md) | Self-contained brief for an LLM agent that needs to install this setup on a new machine. |
 | [`profiles/`](profiles/) | YAML manifests of what to install per use case (`science`, `coding`, `orchestration`, `all`). |
-| [`skills/`](skills/) | Custom skills bundled in this repo. Currently: `brain-dump` (Level 3 compaction preservation). |
+| [`skills/`](skills/) | Skills bundled in this repo and installed into `~/.claude/skills/`: `brain-dump` (Level 3 compaction preservation), the K-Dense `scientific-*` research suite, `citation-management`, `literature-review`, `markitdown`, `scholar-evaluation`, the `humanizer` family, and `skill-creator`. All MIT — see [`skills/ATTRIBUTION.md`](skills/ATTRIBUTION.md). |
 | [`plugins.yaml`](plugins.yaml) | Plugin marketplaces + plugin IDs to register/install via `claude plugin`. |
 | [`hooks/`](hooks/) | Project-agnostic hook scripts (`PreToolUse`, `Stop`, `SessionStart`) + default config + level-by-level documentation. |
 | [`claude-md-templates/`](claude-md-templates/) | Paste-into-CLAUDE.md templates: `## Do NOT` block and `## Compaction preservation` stanza. Edit `{{placeholders}}` per project. |
@@ -37,7 +37,7 @@ Other profiles:
 
 ## What this is NOT
 
-- **A skill marketplace.** The `science` profile references external skills (K-Dense, Anthropic-hosted) by name, but doesn't redistribute them. Install those from their original sources.
+- **A general-purpose skill marketplace.** The bundled skills are the specific set this setup relies on, redistributed under their MIT licenses (see [`skills/ATTRIBUTION.md`](skills/ATTRIBUTION.md)) — not a curated catalog. A few skills some research workflows use (`pyzotero`, `research-lookup`, `generate-image`) are *not* bundled; install those from their original sources.
 - **A claude.ai account snapshot.** MCPs and hosted integrations live in your claude.ai account; this repo can't move them. The `mcps/README.md` documents which are in use; you re-authorize on a new machine via the web UI.
 - **Opinionated about your project's invariants.** The hooks and CLAUDE.md templates leave all the project-specific details as placeholders. Edit before using.
 

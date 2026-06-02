@@ -1,37 +1,28 @@
 # science profile
 #
-# Scientific research workflow. Pulls in the K-Dense / Anthropic
-# scientific-* skills that ship pre-installed on many Claude Code
-# accounts. These skills are NOT redistributed in this repo (license
-# preservation); the profile documents the names so a user can install
-# them from their original sources.
+# Scientific research workflow. Bundles the K-Dense scientific-* research
+# skills plus the writing/humanizer skills, so a fresh clone installs them
+# directly into ~/.claude/skills/. See skills/ATTRIBUTION.md for
+# license/attribution (all MIT).
 
 description: |
   Scientific research: literature review, citation management, figure
-  generation, manuscript writing. Most skills here are pre-installed on
-  research-oriented Claude Code accounts; the profile lists names + the
-  install path each ships from.
+  generation, manuscript writing, plus AI-writing cleanup. All skills are
+  bundled in this repo and installed into ~/.claude/skills/.
 
-# These skills are NOT copied into this repo — they're externally maintained
-# (most by K-Dense Inc. under MIT license, distributed via Anthropic's hosted
-# skill collection). Install them from their original sources. The names
-# below correspond to entries in ~/.claude/skills/ on a Claude Code install
-# that already has them.
-scientific_skills_referenced:
+skills:
   - citation-management
   - literature-review
   - markitdown
-  - pyzotero
-  - research-lookup
   - scholar-evaluation
   - scientific-brainstorming
   - scientific-critical-thinking
   - scientific-schematics
   - scientific-slides
   - scientific-writing
-  - generate-image
-
-skills: []
+  - humanizer
+  - humanizer_academic
+  - humanizer-v2
 
 plugins: []
 
@@ -39,3 +30,7 @@ hooks: []
 
 claude_md_templates:
   - do-not-block.template.md
+
+# Skills referenced by some research workflows but NOT bundled here
+# (not present in this repo; install from their original sources if needed):
+#   pyzotero, research-lookup, generate-image

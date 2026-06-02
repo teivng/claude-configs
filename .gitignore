@@ -1,0 +1,10 @@
+# Install output when this repo is itself used as a --project target.
+.claude/
+
+# Stray nested clone (accidental `git clone` into the repo root).
+/claude-configs/
+
+# OS / editor cruft
+.DS_Store
+__pycache__/
+*.pyc
