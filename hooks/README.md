@@ -29,13 +29,14 @@ Combined with Level 1 (passing explicit args at compact time), this covers ~80% 
 
 Active state preservation across compaction. Three components, all installable from this repo:
 
-1. **`brain-dump` skill** (`skills/brain-dump/`) — user invokes `/brain-dump` before `/compact`. The skill writes structured session state (modified files, branch, open PRs, in-flight subprocesses, decisions made, next actions, quoted invariants) to `<project-root>/.claude/brain-dumps/latest.md`.
-2. **SessionStart hook** (`hooks/sessionstart/brain-dump-on-resume.sh`) — fires on the `compact|clear` matcher after compaction. Reads `latest.md` and emits it as `additionalContext` in the SDK-standard JSON envelope, so Claude Code injects it into the new context.
-3. **CLAUDE.md `## Compaction preservation` stanza** — instructs the in-flight compaction summarizer what to keep; tells the post-compact Claude to read `.claude/brain-dumps/latest.md` if for any reason the hook didn't fire.
+1. **`brain-dump` skill** (`skills/brain-dump/`) — user invokes `/brain-dump` before `/compact`. The skill writes structured session state (modified files, branch, open PRs, in-flight subprocesses, decisions made, next actions, quoted invariants) to `<project-root>/.claude/brain-dumps/latest.md`. Model-driven and **optional** — it captures rich reasoning the deterministic hook can't.
+2. **PreCompact hook** (`hooks/precompact/brain-dump-snapshot.sh`) — fires on the `manual|auto` matcher *before* every compaction. Writes a deterministic factual snapshot (timestamp, git branch/HEAD/status/log, SLURM jobs if `squeue` exists) to `<project-root>/.claude/brain-dumps/auto-snapshot.md`. This is the **automatic floor** — it runs on every `/compact` even if you forgot to `/brain-dump`. Writes a *separate* file so it never clobbers the richer `latest.md`. Always exits 0 — a snapshot bug must never block compaction.
+3. **SessionStart hook** (`hooks/sessionstart/brain-dump-on-resume.sh`) — fires on the `compact|clear` matcher after compaction. Reads whichever of `latest.md` / `auto-snapshot.md` exist and emits them as `additionalContext` in the SDK-standard JSON envelope, so Claude Code injects them into the new context.
+4. **CLAUDE.md `## Compaction preservation` stanza** — instructs the in-flight compaction summarizer what to keep; tells the post-compact Claude to read the brain-dump files if for any reason the hook didn't fire.
 
 Documented results in the broader community (sigalovskinick gist): 12+ compaction cycles with full decision-history retention vs. coherence loss after 2-3 cycles without the pattern.
 
-**Caveat**: there's no documented `PreCompact` hook in Claude Code (only `SessionStart` with `compact` matcher fires *after* compaction). That means the dump step is manual — the user types `/brain-dump` before typing `/compact`. The restore step is automatic. If you find your version of Claude Code supports `PreCompact`, you can wire the dump there too; the skill is invocable as a slash command.
+**The dump→restore loop is now fully automatic.** Earlier versions of this repo noted that no `PreCompact` hook was documented, so the dump step was manual (you typed `/brain-dump` before `/compact`). That's no longer true: `PreCompact` is supported with a `manual|auto` matcher and is wired by the installer. The PreCompact hook guarantees a deterministic snapshot on *every* compaction; the `/brain-dump` skill remains available on top of it for the richer, reasoning-heavy dump when you want it. Verified end-to-end (clear the brain-dumps dir, `/compact`, confirm the injected snapshot carries a fresh timestamp written at the compaction moment).
 
 ## Independent hooks (not tied to compaction)
 
@@ -46,7 +47,8 @@ These can be installed individually; they help long-running projects stay clean 
 | [`pretooluse/block-loose-files.sh`](pretooluse/block-loose-files.sh) | `PreToolUse Write` | Blocks scratch/debug/adhoc files written to repo root. Re-routes to `scripts/`, `tests/`, or `src/`. |
 | [`pretooluse/block-hardcoded-paths.sh`](pretooluse/block-hardcoded-paths.sh) | `PreToolUse Write\|Edit` | Blocks hardcoded absolute paths (`/home/...`, `/Users/...`, `/root/...`) inside module code; allowlists a project's `paths.py` registry. |
 | [`stop/warn-untracked-artifacts.sh`](stop/warn-untracked-artifacts.sh) | `Stop` | Warns (does not block) on untracked artifact files (`*.npy`, `*.pt`, `*.h5`, `*.log`, ...) in the repo. Prevents accidentally committing 12 GB embedding caches. |
-| [`sessionstart/brain-dump-on-resume.sh`](sessionstart/brain-dump-on-resume.sh) | `SessionStart compact\|clear` | Injects the latest brain dump (`<root>/.claude/brain-dumps/latest.md`) into the new post-compact context. |
+| [`precompact/brain-dump-snapshot.sh`](precompact/brain-dump-snapshot.sh) | `PreCompact manual\|auto` | Writes a deterministic state snapshot (`<root>/.claude/brain-dumps/auto-snapshot.md`) before every compaction. Always exits 0 (never blocks). Project-agnostic: git state always, SLURM jobs if `squeue` exists. |
+| [`sessionstart/brain-dump-on-resume.sh`](sessionstart/brain-dump-on-resume.sh) | `SessionStart compact\|clear` | Injects the latest brain dump(s) (`<root>/.claude/brain-dumps/latest.md` + `auto-snapshot.md`) into the new post-compact context. |
 
 All hooks are **project-agnostic**: they read policy from `<project-root>/.claude/hook-config.json` (or fall back to `hooks/default-hook-config.json` if no project config exists). Edit the patterns and paths to match your project's conventions.
 

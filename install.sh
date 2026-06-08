@@ -92,14 +92,16 @@ install_hooks() {
   mkdir_p "$proj/.claude/hooks/pretooluse"
   mkdir_p "$proj/.claude/hooks/stop"
   mkdir_p "$proj/.claude/hooks/sessionstart"
+  mkdir_p "$proj/.claude/hooks/precompact"
   mkdir_p "$proj/.claude/brain-dumps"
 
-  copy "$REPO_DIR/hooks/pretooluse/block-loose-files.sh"      "$proj/.claude/hooks/pretooluse/"
-  copy "$REPO_DIR/hooks/pretooluse/block-loose-files.py"      "$proj/.claude/hooks/pretooluse/"
-  copy "$REPO_DIR/hooks/pretooluse/block-hardcoded-paths.sh"  "$proj/.claude/hooks/pretooluse/"
-  copy "$REPO_DIR/hooks/pretooluse/block-hardcoded-paths.py"  "$proj/.claude/hooks/pretooluse/"
-  copy "$REPO_DIR/hooks/stop/warn-untracked-artifacts.sh"     "$proj/.claude/hooks/stop/"
-  copy "$REPO_DIR/hooks/sessionstart/brain-dump-on-resume.sh" "$proj/.claude/hooks/sessionstart/"
+  copy "$REPO_DIR/hooks/pretooluse/block-loose-files.sh"        "$proj/.claude/hooks/pretooluse/"
+  copy "$REPO_DIR/hooks/pretooluse/block-loose-files.py"        "$proj/.claude/hooks/pretooluse/"
+  copy "$REPO_DIR/hooks/pretooluse/block-hardcoded-paths.sh"    "$proj/.claude/hooks/pretooluse/"
+  copy "$REPO_DIR/hooks/pretooluse/block-hardcoded-paths.py"    "$proj/.claude/hooks/pretooluse/"
+  copy "$REPO_DIR/hooks/stop/warn-untracked-artifacts.sh"       "$proj/.claude/hooks/stop/"
+  copy "$REPO_DIR/hooks/sessionstart/brain-dump-on-resume.sh"   "$proj/.claude/hooks/sessionstart/"
+  copy "$REPO_DIR/hooks/precompact/brain-dump-snapshot.sh"      "$proj/.claude/hooks/precompact/"
 
   if [ ! -f "$proj/.claude/hook-config.json" ]; then
     copy "$REPO_DIR/hooks/default-hook-config.json" "$proj/.claude/hook-config.json"
@@ -127,6 +129,20 @@ install_hooks() {
     [ "$rc" = "2" ] || fail=1
     if [ "$fail" = "1" ]; then
       echo "  hook smoke test failed; please investigate before wiring." >&2
+      exit 1
+    fi
+
+    # PreCompact snapshot hook: opposite contract — it must NEVER block
+    # compaction, so the correct outcome is exit 0 AND a written snapshot file.
+    # Feed it a realistic PreCompact stdin payload and verify both.
+    set +e
+    rm -f "$proj/.claude/brain-dumps/auto-snapshot.md"
+    echo '{"trigger":"manual"}' \
+      | CLAUDE_PROJECT_DIR="$proj" "$proj/.claude/hooks/precompact/brain-dump-snapshot.sh" >/dev/null 2>&1
+    pc_rc=$?
+    set -e
+    if [ "$pc_rc" != "0" ] || [ ! -f "$proj/.claude/brain-dumps/auto-snapshot.md" ]; then
+      echo "  PreCompact snapshot hook smoke test failed (rc=$pc_rc, snapshot written? $([ -f "$proj/.claude/brain-dumps/auto-snapshot.md" ] && echo yes || echo no)); please investigate before wiring." >&2
       exit 1
     fi
     echo "  hooks pass smoke test."

@@ -8,7 +8,7 @@ A personal Claude Code configuration: skills, plugins, hooks, CLAUDE.md template
 
 - **Skills** (bundled in `skills/`, copied to `~/.claude/skills/`): `brain-dump` (Level 3 compaction preservation), `skill-creator`, the K-Dense `scientific-*` research suite (`scientific-brainstorming`, `scientific-critical-thinking`, `scientific-schematics`, `scientific-slides`, `scientific-writing`), `citation-management`, `literature-review`, `markitdown`, `scholar-evaluation`, and the `humanizer` family (`humanizer`, `humanizer_academic`, `humanizer-v2`). All MIT — see `skills/ATTRIBUTION.md`. Which subset installs depends on the profile.
 - **Plugins**: `pr-review-toolkit@claude-plugins-official`, `superpowers@superpowers-dev`, `pyright-lsp@claude-plugins-official`.
-- **Project-agnostic hooks**: `block-loose-files`, `block-hardcoded-paths`, `warn-untracked-artifacts`, `brain-dump-on-resume`.
+- **Project-agnostic hooks**: `block-loose-files`, `block-hardcoded-paths`, `warn-untracked-artifacts`, `brain-dump-snapshot` (PreCompact — deterministic state dump before every compaction), `brain-dump-on-resume` (SessionStart — re-injects the dump after).
 - **CLAUDE.md templates**: `do-not-block`, `compaction-preservation`.
 - **Documentation**: orchestration writeup, compaction strategy (Levels 1/2/3), hooks philosophy.
 
@@ -54,7 +54,8 @@ What the installer does NOT handle automatically:
 
 1. **Edit `<project>/.claude/hook-config.json`** to match the project's conventions. The bundled defaults (`/home/`, `/Users/`, `/root/` as forbidden prefixes; `src/**/paths.py` as the allowlist file; etc.) are sensible but project-specific. Customize.
 2. **Paste the CLAUDE.md templates** into the project's CLAUDE.md, edit the placeholders, strip the leading HTML comment.
-3. **Smoke-test the brain-dump skill**: type `/brain-dump` in a Claude Code session. The skill should write to `<project>/.claude/brain-dumps/latest.md`. Inspect the file. If it looks reasonable, run `/compact` and verify the SessionStart hook injects the dump into the new context.
+3. **Verify the automatic dump→restore loop** (no skill needed): clear the dump dir (`rm -f <project>/.claude/brain-dumps/auto-snapshot.md`), **restart the Claude Code session** so the newly-wired `PreCompact` binding registers, then run `/compact`. After compaction, ask the new session what timestamp and git/SLURM state the injected snapshot shows. A snapshot stamped at the compaction moment proves the PreCompact hook fired and the SessionStart hook re-injected it. (Hooks are loaded from `settings.local.json` at session start, so a binding added mid-session won't fire until you restart — without the restart you'll get a false negative.)
+4. **(Optional) Smoke-test the richer brain-dump skill**: type `/brain-dump` in a Claude Code session. The skill should write to `<project>/.claude/brain-dumps/latest.md`. Inspect it; after `/compact` the SessionStart hook injects both `latest.md` and `auto-snapshot.md`.
 
 ## What to AVOID
 

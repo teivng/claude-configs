@@ -21,6 +21,7 @@ hooks:
   - pretooluse/block-hardcoded-paths.sh
   - stop/warn-untracked-artifacts.sh
   - sessionstart/brain-dump-on-resume.sh
+  - precompact/brain-dump-snapshot.sh
 
 claude_md_templates:
   - do-not-block.template.md

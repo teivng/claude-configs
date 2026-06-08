@@ -36,6 +36,14 @@ HOOK_BINDINGS = [
         "matcher": "compact|clear",
         "command_rel": ".claude/hooks/sessionstart/brain-dump-on-resume.sh",
     },
+    {
+        # PreCompact fires before every compaction (manual + auto). The matcher
+        # selects the trigger; "manual|auto" covers both. Pairs with the
+        # SessionStart hook above to form the automatic dump→restore loop.
+        "event": "PreCompact",
+        "matcher": "manual|auto",
+        "command_rel": ".claude/hooks/precompact/brain-dump-snapshot.sh",
+    },
 ]
 
 

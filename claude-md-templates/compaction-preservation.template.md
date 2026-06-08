@@ -30,14 +30,25 @@ the file; never drop the Do NOT block or the worktree/PR list.
 
 ### Brain-dump workflow (active)
 
-Before any `/compact`, invoke the `brain-dump` skill (or type
-`/brain-dump`) to capture structured state to
-`.claude/brain-dumps/latest.md`. After `/compact`, a SessionStart hook
-(matcher `compact|clear`, wired in `.claude/settings.local.json`)
-auto-injects that dump as `additionalContext` into the new context, so
-the post-compact session inherits modified files, branch state, open
-PRs, in-flight subprocesses, and recent decisions verbatim — not just
-what the compaction summarizer chose to keep.
+This project wires the automatic dump→restore loop (both hooks live in
+`.claude/settings.local.json`):
 
-Manual flow if for any reason the hook doesn't fire: read
-`.claude/brain-dumps/latest.md` directly at session start.
+- **Before every `/compact`**, a PreCompact hook (matcher `manual|auto`)
+  writes a deterministic snapshot — timestamp, git branch/HEAD/status/log,
+  and SLURM jobs — to `.claude/brain-dumps/auto-snapshot.md`. This is
+  automatic; you don't have to remember anything.
+- **After `/compact`**, a SessionStart hook (matcher `compact|clear`)
+  re-injects that snapshot (plus the richer `latest.md` if present) as
+  `additionalContext`, so the post-compact session inherits modified
+  files, branch state, and in-flight jobs verbatim — not just what the
+  compaction summarizer chose to keep.
+
+Optionally, for a richer reasoning-heavy dump (open PRs, rejected
+alternatives, next concrete actions, quoted invariants), invoke the
+`brain-dump` skill (`/brain-dump`) before `/compact`; it writes
+`.claude/brain-dumps/latest.md`, which the restore hook injects alongside
+the deterministic snapshot.
+
+Manual fallback if for any reason a hook doesn't fire: read
+`.claude/brain-dumps/auto-snapshot.md` (and `latest.md`) directly at
+session start.
